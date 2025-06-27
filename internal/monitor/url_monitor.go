@@ -22,7 +22,11 @@ type UrlMonitor struct {
 // NewUrlMonitor crée et retourne une nouvelle instance de UrlMonitor.
 // Attention: retourne un pointeur
 func NewUrlMonitor(linkRepo repository.LinkRepository, interval time.Duration) *UrlMonitor {
-	return
+	return &UrlMonitor{
+        linkRepo:    linkRepo,
+        interval:    interval,
+        knownStates: make(map[uint]bool),
+    }
 }
 
 // Start lance la boucle de surveillance périodique des URLs.
@@ -48,11 +52,15 @@ func (m *UrlMonitor) checkUrls() {
 	// TODO : Récupérer toutes les URLs longues actives depuis le linkRepo (GetAllLinks).
 	// Gérer l'erreur si la récupération échoue.
 	// Si erreur : log.Printf("[MONITOR] ERREUR lors de la récupération des liens pour la surveillance : %v", err)
-	links, err :=
+	links, err := m.linkRepo.GetAllLinks()
+    if err != nil {
+        log.Printf("[MONITOR] ERREUR lors de la récupération des liens pour la surveillance : %v", err)
+        return
+    }
 
 	for _, link := range links {
 		// TODO : Pour chaque lien, vérifier son accessibilité (isUrlAccessible).
-		currentState :=
+		currentState := m.isUrlAccessible(link.LongURL)
 
 		// Protéger l'accès à la map 'knownStates' car 'checkUrls' peut être exécuté concurremment
 		m.mu.Lock()
@@ -63,13 +71,17 @@ func (m *UrlMonitor) checkUrls() {
 		// Si c'est la première vérification pour ce lien, on initialise l'état sans notifier.
 		if !exists {
 			log.Printf("[MONITOR] État initial pour le lien %s (%s) : %s",
-				link.ShortCode, link.LongURL, formatState(currentState))
+				link.Shortcode, link.LongURL, formatState(currentState))
 			continue
 		}
 
 		// TODO : Comparer l'état actuel avec l'état précédent.
 		// Si l'état a changé, générer une fausse notification dans les logs.
 		// log.Printf("[NOTIFICATION] Le lien %s (%s) est passé de %s à %s !"
+		if currentState != previousState {
+            log.Printf("[NOTIFICATION] Le lien %s (%s) est passé de %s à %s !",
+                link.Shortcode, link.LongURL, formatState(previousState), formatState(currentState))
+        }
 
 	}
 	log.Println("[MONITOR] Vérification de l'état des URLs terminée.")
