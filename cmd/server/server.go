@@ -62,7 +62,7 @@ puis lance le serveur HTTP.`,
 		// Créez des instances de LinkService et ClickService, en leur passant les repositories nécessaires.
 
 		linkService := services.NewLinkService(linkRepo)
-		_ = services.NewClickService(clickRepo)
+		clickService := services.NewClickService(clickRepo)
 
 		// Laissez le log
 		log.Println("Services métiers initialisés.")
@@ -96,7 +96,7 @@ puis lance le serveur HTTP.`,
 		router := gin.Default()
 		// TODO : Configurer les routes API pour les liens et les clics.
 		// Utilisez les services linkService et clickService pour les handlers.
-		api.SetupRoutes(router, linkService)
+		api.SetupRoutes(router, linkService, clickService)
 
 		// Pas toucher au log
 		log.Println("Routes API configurées.")

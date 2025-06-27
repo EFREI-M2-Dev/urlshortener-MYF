@@ -20,7 +20,7 @@ import (
 var ClickEventsChannel chan *models.ClickEvent
 
 // SetupRoutes configure toutes les routes de l'API Gin et injecte les dépendances nécessaires
-func SetupRoutes(router *gin.Engine, linkService *services.LinkService) {
+func SetupRoutes(router *gin.Engine, linkService *services.LinkService, clickService *services.ClickService) {
 	// Le channel est initialisé ici.
 	if ClickEventsChannel == nil {
 		// TODO Créer le channel ici (make), il doit être bufférisé
@@ -40,7 +40,7 @@ func SetupRoutes(router *gin.Engine, linkService *services.LinkService) {
 	router.GET("/api/v1/links/:shortCode/stats", GetLinkStatsHandler(linkService))
 
 	// Route de Redirection (au niveau racine pour les short codes)
-	router.GET("/:shortCode", RedirectHandler(linkService))
+	router.GET("/:shortCode", RedirectHandler(linkService, clickService))
 }
 
 // HealthCheckHandler gère la route /health pour vérifier l'état du service.
@@ -92,7 +92,7 @@ func CreateShortLinkHandler(linkService *services.LinkService) gin.HandlerFunc {
 }
 
 // RedirectHandler gère la redirection d'une URL courte vers l'URL longue et l'enregistrement asynchrone des clics.
-func RedirectHandler(linkService *services.LinkService) gin.HandlerFunc {
+func RedirectHandler(linkService *services.LinkService, clickService *services.ClickService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Récupère le shortCode de l'URL avec c.Param
 		shortCode := c.Param("shortCode")
@@ -128,10 +128,17 @@ func RedirectHandler(linkService *services.LinkService) gin.HandlerFunc {
 		// log.Printf("Warning: ClickEventsChannel is full, dropping click event for %s.", shortCode)
 
 		select {
-			case ClickEventsChannel <- clickEvent:
-				// Si l'envoi est réussi, on continue
-			default:
-				log.Printf("Warning: ClickEventsChannel is full, dropping click event for %s.", shortCode)
+		case ClickEventsChannel <- clickEvent:
+			// Si l'envoi est réussi, on continue
+			click := &models.Click{
+				LinkID:    clickEvent.LinkID,
+				Timestamp: clickEvent.Timestamp,
+				UserAgent: clickEvent.UserAgent,
+				IPAddress: clickEvent.IPAddress,
+			}
+			clickService.RecordClick(click)
+		default:
+			log.Printf("Warning: ClickEventsChannel is full, dropping click event for %s.", shortCode)
 		}
 
 		// TODO 5: Effectuer la redirection HTTP 302 (StatusFound) vers l'URL longue.
@@ -143,13 +150,13 @@ func RedirectHandler(linkService *services.LinkService) gin.HandlerFunc {
 // GetLinkStatsHandler gère la récupération des statistiques pour un lien spécifique.
 func GetLinkStatsHandler(linkService *services.LinkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		 // TODO Récupère le shortCode de l'URL avec c.Param
+		// TODO Récupère le shortCode de l'URL avec c.Param
 		shortCode := c.Param("shortCode")
 
 		// TODO 6: Appeler le LinkService pour obtenir le lien et le nombre total de clics.
-			// Gérer le cas où le lien n'est pas trouvé.
+		// Gérer le cas où le lien n'est pas trouvé.
 		// toujours avec l'erreur Gorm ErrRecordNotFound
-			// Gérer d'autres erreurs
+		// Gérer d'autres erreurs
 
 		link, err := linkService.GetLinkByShortCode(shortCode)
 		if err != nil {
