@@ -11,14 +11,14 @@ import (
 	"time"
 
 	cmd2 "github.com/axellelanca/urlshortener/cmd"
-	//"github.com/axellelanca/urlshortener/internal/api"
+	"github.com/axellelanca/urlshortener/internal/api"
+
 	//"github.com/axellelanca/urlshortener/internal/models"
 	"github.com/axellelanca/urlshortener/internal/monitor"
-	//"github.com/axellelanca/urlshortener/internal/repository"
+	"github.com/axellelanca/urlshortener/internal/repository"
 
-	//"github.com/axellelanca/urlshortener/internal/services"
-	//"github.com/axellelanca/urlshortener/internal/workers"
-	//"github.com/gin-gonic/gin"
+	"github.com/axellelanca/urlshortener/internal/services"
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"gorm.io/driver/sqlite" // Driver SQLite pour GORM
 	"gorm.io/gorm"
@@ -53,8 +53,8 @@ puis lance le serveur HTTP.`,
 		// TODO : Initialiser les repositories.
 		// Créez des instances de GormLinkRepository et GormClickRepository.
 
-		//linkRepo := repository.NewLinkRepository(db)
-		//clickRepo := repository.NewClickRepository(db)
+		linkRepo := repository.NewLinkRepository(db)
+		clickRepo := repository.NewClickRepository(db)
 
 		// Laissez le log
 		log.Println("Repositories initialisés.")
@@ -62,8 +62,8 @@ puis lance le serveur HTTP.`,
 		// TODO : Initialiser les services métiers.
 		// Créez des instances de LinkService et ClickService, en leur passant les repositories nécessaires.
 
-		//linkService := services.NewLinkService(linkRepo)
-		//clickService := services.NewClickService(clickRepo)
+		linkService := services.NewLinkService(linkRepo)
+		clickService := services.NewClickService(clickRepo)
 
 		// Laissez le log
 		log.Println("Services métiers initialisés.")
@@ -72,20 +72,35 @@ puis lance le serveur HTTP.`,
 		// Le channel est bufferisé avec la taille configurée.
 		// Passez le channel et le clickRepo aux workers.
 
+		clickEventsChannel := make(chan *repository.ClickRepository, cfg.Workers.ClickEventsBufferSize)
+
 		// TODO : Remplacer les XXX par les bonnes variables
 		log.Printf("Channel d'événements de clic initialisé avec un buffer de %d. %d worker(s) de clics démarré(s).",
-			XXX, XXX)
+			cfg.Workers.ClickEventsBufferSize, cfg.Analytics.WorkerCount)
 
 		// TODO : Initialiser et lancer le moniteur d'URLs.
 		// Utilisez l'intervalle configuré (cfg.Monitor.IntervalMinutes).
 		// Lancez le moniteur dans sa propre goroutine.
-		monitorInterval := time.Duration(XXX) * time.Minute
-		urlMonitor := monitor.NewUrlMonitor() // Le moniteur a besoin du linkRepo et de l'interval
+		monitorInterval := time.Duration(
+			cfg.Monitor.IntervalMinutes,
+		) * time.Minute
+		urlMonitor := monitor.NewUrlMonitor(
+			linkRepo,
+			monitorInterval,
+		) // Le moniteur a besoin du linkRepo et de l'interval
 		go urlMonitor.Start()
 		log.Printf("Moniteur d'URLs démarré avec un intervalle de %v.", monitorInterval)
 
 		// TODO : Configurer le routeur Gin et les handlers API.
 		// Passez les services nécessaires aux fonctions de configuration des routes.
+		router := gin.Default()
+		// TODO : Configurer les routes API pour les liens et les clics.
+		// Utilisez les services linkService et clickService pour les handlers.
+		if err := api.ConfigureRoutes(router, linkService, clickService, clickEventsChannel); err != nil {
+			log.Fatalf("Erreur lors de la configuration des routes API : %v", err)
+		}
+
+
 
 		// Pas toucher au log
 		log.Println("Routes API configurées.")

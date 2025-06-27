@@ -11,22 +11,26 @@ import (
 // (ou des variables d'environnement) aux champs de la structure Go.
 type Config struct {
 	Server struct {
-		Port     int    `mapstructure:"port"`      // Port du serveur HTTP
-		BaseURL  string `mapstructure:"base_url"` // URL de base pour les redirections
-	} `mapstructure:"server"` // Le tag mapstructure permet de mapper la clé
+		Port     int    `mapstructure:"port"`
+		BaseURL  string `mapstructure:"base_url"`
+	} `mapstructure:"server"`
 
 	Database struct {
-		Name string `mapstructure:"name"` // Nom de la base de données
-	} `mapstructure:"database"` // Le tag mapstructure permet de mapper la clé
+		Name string `mapstructure:"name"`
+	} `mapstructure:"database"`
 
 	Analytics struct {
-		BufferSize int `mapstructure:"buffer_size"` // Taille du buffer pour les événements
-		WorkerCount int `mapstructure:"worker_count"` // Nombre de workers pour traiter les événements
-	} `mapstructure:"analytics"` // Le tag mapstructure permet de mapper la clé
+		BufferSize int `mapstructure:"buffer_size"`
+		WorkerCount int `mapstructure:"worker_count"`
+	} `mapstructure:"analytics"`
 
 	Monitor struct {
-		IntervalMinutes int `mapstructure:"interval_minutes"` // Intervalle en minutes pour le
-	} `mapstructure:"monitor"` // Le tag mapstructure permet de mapper la clé
+		IntervalMinutes int `mapstructure:"interval_minutes"`
+	} `mapstructure:"monitor"`
+
+	Workers struct {
+		ClickEventsBufferSize int `mapstructure:"click_events_buffer_size"`
+	} `mapstructure:"workers"`
 }
 
 // LoadConfig charge la configuration de l'application en utilisant Viper.
@@ -50,12 +54,12 @@ func LoadConfig() (*Config, error) {
 	// ou si le fichier n'existe pas.
 	// server.port, server.base_url etc.
 
-	viper.SetDefault("server.port", 8080) // Port par défaut du serveur HTTP
-	viper.SetDefault("server.base_url", "http://localhost:8080") // URL de base par défaut
-	viper.SetDefault("database.name", "urlshortener.db") // Nom de la base de données par défaut
-	viper.SetDefault("analytics.buffer_size", 1000) // Taille du buffer pour les événements par défaut
-	viper.SetDefault("analytics.worker_count", 4) // Nombre de workers pour traiter les événements par défaut
-	viper.SetDefault("monitor.interval_minutes", 5) // Intervalle en minutes pour le moniteur par défaut
+	viper.SetDefault("server.port", 8080)
+	viper.SetDefault("server.base_url", "http")
+	viper.SetDefault("database.name", "urlshortener.db")
+	viper.SetDefault("analytics.buffer_size", 1000)
+	viper.SetDefault("analytics.worker_count", 4)
+	viper.SetDefault("monitor.interval_minutes", 5)
 
 	// TODO : Lire le fichier de configuration.
 
