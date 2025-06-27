@@ -55,7 +55,7 @@ func LoadConfig() (*Config, error) {
 	// server.port, server.base_url etc.
 
 	viper.SetDefault("server.port", 8080)
-	viper.SetDefault("server.base_url", "http")
+	viper.SetDefault("server.base_url", "http://localhost:8080")
 	viper.SetDefault("database.name", "urlshortener.db")
 	viper.SetDefault("analytics.buffer_size", 1000)
 	viper.SetDefault("analytics.worker_count", 4)
