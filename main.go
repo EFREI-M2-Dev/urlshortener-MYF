@@ -7,6 +7,5 @@ import (
 )
 
 func main() {
-	// TODO Exécute la commande racine de Cobra.
 	cmd.Execute()
 }

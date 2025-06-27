@@ -18,7 +18,6 @@ type UrlMonitor struct {
 	mu          sync.Mutex                // Mutex pour protéger l'accès concurrentiel à knownStates
 }
 
-// TODO finir cette fonction
 // NewUrlMonitor crée et retourne une nouvelle instance de UrlMonitor.
 // Attention: retourne un pointeur
 func NewUrlMonitor(linkRepo repository.LinkRepository, interval time.Duration) *UrlMonitor {
@@ -49,9 +48,7 @@ func (m *UrlMonitor) Start() {
 func (m *UrlMonitor) checkUrls() {
 	log.Println("[MONITOR] Lancement de la vérification de l'état des URLs...")
 
-	// TODO : Récupérer toutes les URLs longues actives depuis le linkRepo (GetAllLinks).
-	// Gérer l'erreur si la récupération échoue.
-	// Si erreur : log.Printf("[MONITOR] ERREUR lors de la récupération des liens pour la surveillance : %v", err)
+
 	links, err := m.linkRepo.GetAllLinks()
     if err != nil {
         log.Printf("[MONITOR] ERREUR lors de la récupération des liens pour la surveillance : %v", err)
@@ -59,7 +56,6 @@ func (m *UrlMonitor) checkUrls() {
     }
 
 	for _, link := range links {
-		// TODO : Pour chaque lien, vérifier son accessibilité (isUrlAccessible).
 		currentState := m.isUrlAccessible(link.LongURL)
 
 		// Protéger l'accès à la map 'knownStates' car 'checkUrls' peut être exécuté concurremment
@@ -75,9 +71,7 @@ func (m *UrlMonitor) checkUrls() {
 			continue
 		}
 
-		// TODO : Comparer l'état actuel avec l'état précédent.
-		// Si l'état a changé, générer une fausse notification dans les logs.
-		// log.Printf("[NOTIFICATION] Le lien %s (%s) est passé de %s à %s !"
+	
 		if currentState != previousState {
             log.Printf("[NOTIFICATION] Le lien %s (%s) est passé de %s à %s !",
                 link.Shortcode, link.LongURL, formatState(previousState), formatState(currentState))
