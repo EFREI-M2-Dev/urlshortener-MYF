@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	cmd2 "github.com/axellelanca/urlshortener/cmd"
 	"github.com/axellelanca/urlshortener/internal/models"
 	"github.com/axellelanca/urlshortener/internal/services"
 	"github.com/gin-gonic/gin"
@@ -60,9 +61,14 @@ func CreateShortLinkHandler(linkService *services.LinkService) gin.HandlerFunc {
 		// TODO : Tente de lier le JSON de la requête à la structure CreateLinkRequest.
 		// Gin gère la validation 'binding'.
 
+		cfg := cmd2.Cfg
+		if cfg == nil {
+			log.Fatal("Configuration non chargée. Veuillez vérifier la configuration.")
+		}
+
 		if err := c.ShouldBindJSON(&req); err != nil {
 			// Si la validation échoue, retourne une erreur 400 Bad Request avec le message
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: ", err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
 			return
 		}
 
@@ -98,7 +104,7 @@ func RedirectHandler(linkService *services.LinkService) gin.HandlerFunc {
 		if err != nil {
 			// Si le lien n'est pas trouvé, retourner HTTP 404 Not Found.
 			// Utiliser errors.Is et l'erreur Gorm
-			if errors.Is(err, gorm.ErrRecordNotFound) { // Vérifie si l'erreur est celle d'un enregistrement non trouvé
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Link not found"})
 				return
 			}
@@ -110,9 +116,10 @@ func RedirectHandler(linkService *services.LinkService) gin.HandlerFunc {
 
 		// TODO 3: Créer un ClickEvent avec les informations pertinentes.
 		clickEvent := &models.ClickEvent{
-			ShortCode: shortCode,
-			LongURL:   link.LongURL,
+			LinkID:    link.ID,
 			Timestamp: time.Now(),
+			UserAgent: c.Request.UserAgent(),
+			IPAddress: c.ClientIP(),
 		}
 
 		// TODO 4: Envoyer le ClickEvent dans le ClickEventsChannel avec le Multiplexage.
