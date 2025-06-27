@@ -1,7 +1,7 @@
 package server
 
 import (
-	//"errors"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,12 +12,11 @@ import (
 
 	cmd2 "github.com/axellelanca/urlshortener/cmd"
 	"github.com/axellelanca/urlshortener/internal/api"
-
-	//"github.com/axellelanca/urlshortener/internal/models"
+	"github.com/axellelanca/urlshortener/internal/models"
 	"github.com/axellelanca/urlshortener/internal/monitor"
 	"github.com/axellelanca/urlshortener/internal/repository"
-
 	"github.com/axellelanca/urlshortener/internal/services"
+	"github.com/axellelanca/urlshortener/internal/workers"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"gorm.io/driver/sqlite" // Driver SQLite pour GORM
@@ -63,7 +62,7 @@ puis lance le serveur HTTP.`,
 		// Créez des instances de LinkService et ClickService, en leur passant les repositories nécessaires.
 
 		linkService := services.NewLinkService(linkRepo)
-		clickService := services.NewClickService(clickRepo)
+		_ = services.NewClickService(clickRepo)
 
 		// Laissez le log
 		log.Println("Services métiers initialisés.")
@@ -72,7 +71,8 @@ puis lance le serveur HTTP.`,
 		// Le channel est bufferisé avec la taille configurée.
 		// Passez le channel et le clickRepo aux workers.
 
-		clickEventsChannel := make(chan *repository.ClickRepository, cfg.Workers.ClickEventsBufferSize)
+		clickEventsChannel := make(chan models.ClickEvent, cfg.Workers.ClickEventsBufferSize)
+		workers.StartClickWorkers(cfg.Analytics.WorkerCount, clickEventsChannel, clickRepo)
 
 		// TODO : Remplacer les XXX par les bonnes variables
 		log.Printf("Channel d'événements de clic initialisé avec un buffer de %d. %d worker(s) de clics démarré(s).",
@@ -96,11 +96,7 @@ puis lance le serveur HTTP.`,
 		router := gin.Default()
 		// TODO : Configurer les routes API pour les liens et les clics.
 		// Utilisez les services linkService et clickService pour les handlers.
-		if err := api.ConfigureRoutes(router, linkService, clickService, clickEventsChannel); err != nil {
-			log.Fatalf("Erreur lors de la configuration des routes API : %v", err)
-		}
-
-
+		api.SetupRoutes(router, linkService)
 
 		// Pas toucher au log
 		log.Println("Routes API configurées.")
@@ -114,6 +110,12 @@ puis lance le serveur HTTP.`,
 
 		// TODO : Démarrer le serveur Gin dans une goroutine anonyme pour ne pas bloquer.
 		// Pensez à logger des ptites informations...
+		go func() {
+			log.Printf("Serveur HTTP démarré sur le port %d", cfg.Server.Port)
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Erreur lors du démarrage du serveur: %v", err)
+			}
+		}()
 
 		// Gére l'arrêt propre du serveur (graceful shutdown).
 		// Créez un channel pour les signaux OS (SIGINT, SIGTERM).
@@ -125,6 +127,12 @@ puis lance le serveur HTTP.`,
 		log.Println("Signal d'arrêt reçu. Arrêt du serveur...")
 
 		// Arrêt propre du serveur HTTP avec un timeout.
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("Erreur lors de l'arrêt du serveur: %v", err)
+		}
+
 		log.Println("Arrêt en cours... Donnez un peu de temps aux workers pour finir.")
 		time.Sleep(5 * time.Second)
 
@@ -134,4 +142,5 @@ puis lance le serveur HTTP.`,
 
 func init() {
 	// TODO : ajouter la commande
+	cmd2.RootCmd.AddCommand(RunServerCmd)
 }
