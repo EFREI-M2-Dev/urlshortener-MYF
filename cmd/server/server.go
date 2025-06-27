@@ -1,7 +1,7 @@
 package server
 
 import (
-	"errors"
+	//"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,13 +11,14 @@ import (
 	"time"
 
 	cmd2 "github.com/axellelanca/urlshortener/cmd"
-	"github.com/axellelanca/urlshortener/internal/api"
-	"github.com/axellelanca/urlshortener/internal/models"
+	//"github.com/axellelanca/urlshortener/internal/api"
+	//"github.com/axellelanca/urlshortener/internal/models"
 	"github.com/axellelanca/urlshortener/internal/monitor"
 	"github.com/axellelanca/urlshortener/internal/repository"
-	"github.com/axellelanca/urlshortener/internal/services"
-	"github.com/axellelanca/urlshortener/internal/workers"
-	"github.com/gin-gonic/gin"
+
+	//"github.com/axellelanca/urlshortener/internal/services"
+	//"github.com/axellelanca/urlshortener/internal/workers"
+	//"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"gorm.io/driver/sqlite" // Driver SQLite pour GORM
 	"gorm.io/gorm"
@@ -35,11 +36,25 @@ puis lance le serveur HTTP.`,
 		// TODO : Charger la configuration chargée globalement via cmd.cfg
 		// Ne pas oublier la gestion d'erreur (si nil ?), si erreur, faire un log.Fataf
 
+		cfg := cmd2.Cfg
+		if cfg == nil {
+			log.Fatal("Configuration non chargée. Veuillez vérifier la configuration.")
+		}
+
 		// TODO : Initialiser la connexion à la base de données SQLite avec GORM.
 		// Utilisez le nom de la base de données depuis la configuration (cfg.Database.Name).
 
+		db, err := gorm.Open(sqlite.Open(cfg.Database.Name), &gorm.Config{})
+		if err != nil {
+			log.Fatalf("Erreur lors de la connexion à la base de données : %v", err)
+		}
+		log.Println("Connexion à la base de données établie.")
+
 		// TODO : Initialiser les repositories.
 		// Créez des instances de GormLinkRepository et GormClickRepository.
+
+		linkRepo := repository.NewGormLinkRepository(db)
+		clickRepo := repository.NewGormClickRepository(db)
 
 		// Laissez le log
 		log.Println("Repositories initialisés.")
