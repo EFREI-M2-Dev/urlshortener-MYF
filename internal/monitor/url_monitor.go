@@ -77,17 +77,18 @@ func (m *UrlMonitor) checkUrls() {
 
 // isUrlAccessible effectue une requête HTTP HEAD pour vérifier l'accessibilité d'une URL.
 func (m *UrlMonitor) isUrlAccessible(url string) bool {
-	// TODO Définir un timeout pour éviter de bloquer trop longtemps (5 secondes c'est bien)
+    client := http.Client{
+        Timeout: 5 * time.Second,
+    }
 
-	// TODO: Effectuer une requête HEAD (plus légère que GET) sur l'URL.
-	// Un code de statut 2xx ou 3xx indique que l'URL est accessible.
-	// Si err : log.Printf("[MONITOR] Erreur d'accès à l'URL '%s': %v", url, err)
+    resp, err := client.Head(url)
+    if err != nil {
+        log.Printf("[MONITOR] Erreur d'accès à l'URL '%s': %v", url, err)
+        return false
+    }
+    defer resp.Body.Close()
 
-	// TODO Assurez-vous de fermer le corps de la réponse pour libérer les ressources
-
-
-	// Déterminer l'accessibilité basée sur le code de statut HTTP.
-	return resp.StatusCode >= 200 && resp.StatusCode < 400 // Codes 2xx ou 3xx
+    return resp.StatusCode >= 200 && resp.StatusCode < 400
 }
 
 // formatState est une fonction utilitaire pour rendre l'état plus lisible dans les logs.
