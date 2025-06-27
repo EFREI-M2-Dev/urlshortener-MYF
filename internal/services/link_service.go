@@ -22,6 +22,9 @@ const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 // Elle détient linkRepo qui est une référence vers une interface LinkRepository.
 // IMPORTANT : Le champ doit être du type de l'interface (non-pointeur).
 
+type LinkService struct {
+	linkRepo repository.LinkRepository // Référence vers le repository de liens
+}
 
 // NewLinkService crée et retourne une nouvelle instance de LinkService.
 func NewLinkService(linkRepo repository.LinkRepository) *LinkService {
@@ -36,6 +39,23 @@ func NewLinkService(linkRepo repository.LinkRepository) *LinkService {
 // Il utilise le package 'crypto/rand' pour éviter la prévisibilité.
 // Je vous laisse chercher un peu :) C'est faisable en une petite dizaine de ligne
 
+const shortCodeLength = 6 // Longueur du code court
+func GenerateShortCode(length int) (string, error) {
+	if length <= 0 {
+		return "", errors.New("length must be greater than 0")
+	}
+
+	code := make([]byte, length)
+	for i := range code {
+		index, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", fmt.Errorf("error generating random index: %w", err)
+		}
+		code[i] = charset[index.Int64()]
+	}
+
+	return string(code), nil
+}
 
 // CreateLink crée un nouveau lien raccourci.
 // Il génère un code court unique, puis persiste le lien dans la base de données.
@@ -48,13 +68,21 @@ func (s *LinkService) CreateLink(longURL string) (*models.Link, error) {
 
 	// TODO Définir un nombre maximum (5) de tentative pour trouver un code unique  (maxRetries)
 
+	const maxRetries = 5
+	var shortCode string
 
 	for i := 0; i < maxRetries; i++ {
 		// TODO : Génère un code de 6 caractères (GenerateShortCode)
 
+		code, err := GenerateShortCode(shortCodeLength)
+		if err != nil {
+			return nil, fmt.Errorf("error generating short code: %w", err)
+		}
 
 		// TODO : Vérifie si le code généré existe déjà en base de données (GetLinkbyShortCode)
 		// On ignore la première valeur
+
+		_, err = s.linkRepo.GetLinkByShortCode(code)
 
 		if err != nil {
 			// Si l'erreur est 'record not found' de GORM, cela signifie que le code est unique.
@@ -73,15 +101,24 @@ func (s *LinkService) CreateLink(longURL string) (*models.Link, error) {
 
 	// TODO : Si après toutes les tentatives, aucun code unique n'a été trouvé... Errors.New
 
+	if shortCode == "" {
+		return nil, errors.New("failed to generate a unique short code after maximum retries")
+	}
 
 	// TODO Crée une nouvelle instance du modèle Link.
-	link :=
+	link := &models.Link{
+		LongURL:   longURL,
+		Shortcode: shortCode,
+		CreatedAt: time.Now(),
+	}
 
 	// TODO Persiste le nouveau lien dans la base de données via le repository (CreateLink)
-
+	if err := s.linkRepo.CreateLink(link); err != nil {
+		return nil, fmt.Errorf("error creating link in repository: %w", err)
+	}
 
 	// TODO Retourne le lien créé
-
+	return link, nil
 }
 
 // GetLinkByShortCode récupère un lien via son code court.
@@ -89,7 +126,15 @@ func (s *LinkService) CreateLink(longURL string) (*models.Link, error) {
 func (s *LinkService) GetLinkByShortCode(shortCode string) (*models.Link, error) {
 	// TODO : Récupérer un lien par son code court en utilisant s.linkRepo.GetLinkByShortCode.
 	// Retourner le lien trouvé ou une erreur si non trouvé/problème DB.
-
+	
+	link, err := s.linkRepo.GetLinkByShortCode(shortCode)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("link with shortcode '%s' not found", shortCode)
+		}
+		return nil, fmt.Errorf("error retrieving link: %w", err)
+	}
+	return link, nil
 }
 
 // GetLinkStats récupère les statistiques pour un lien donné (nombre total de clics).
@@ -97,10 +142,22 @@ func (s *LinkService) GetLinkByShortCode(shortCode string) (*models.Link, error)
 func (s *LinkService) GetLinkStats(shortCode string) (*models.Link, int, error) {
 	// TODO : Récupérer le lien par son shortCode
 
+	link, err := s.linkRepo.GetLinkByShortCode(shortCode)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, 0, fmt.Errorf("link with shortcode '%s' not found", shortCode)
+		}
+		return nil, 0, fmt.Errorf("error retrieving link: %w", err)
+	}
 
 	// TODO 4: Compter le nombre de clics pour ce LinkID
 
+	clickCount, err := s.linkRepo.CountClicksByLinkID(link.ID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error counting clicks for link ID %d: %w", link.ID, err)
+	}
+
 	// TODO : on retourne les 3 valeurs
-	return
+	return link, clickCount, nil
 }
 

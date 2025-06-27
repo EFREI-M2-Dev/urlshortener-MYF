@@ -14,7 +14,7 @@ import (
 	//"github.com/axellelanca/urlshortener/internal/api"
 	//"github.com/axellelanca/urlshortener/internal/models"
 	"github.com/axellelanca/urlshortener/internal/monitor"
-	"github.com/axellelanca/urlshortener/internal/repository"
+	//"github.com/axellelanca/urlshortener/internal/repository"
 
 	//"github.com/axellelanca/urlshortener/internal/services"
 	//"github.com/axellelanca/urlshortener/internal/workers"
@@ -53,14 +53,17 @@ puis lance le serveur HTTP.`,
 		// TODO : Initialiser les repositories.
 		// Créez des instances de GormLinkRepository et GormClickRepository.
 
-		linkRepo := repository.NewGormLinkRepository(db)
-		clickRepo := repository.NewGormClickRepository(db)
+		//linkRepo := repository.NewLinkRepository(db)
+		//clickRepo := repository.NewClickRepository(db)
 
 		// Laissez le log
 		log.Println("Repositories initialisés.")
 
 		// TODO : Initialiser les services métiers.
 		// Créez des instances de LinkService et ClickService, en leur passant les repositories nécessaires.
+
+		//linkService := services.NewLinkService(linkRepo)
+		//clickService := services.NewClickService(clickRepo)
 
 		// Laissez le log
 		log.Println("Services métiers initialisés.")
