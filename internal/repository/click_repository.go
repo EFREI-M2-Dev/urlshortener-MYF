@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"fmt"
-
 	"github.com/axellelanca/urlshortener/internal/models"
 	"gorm.io/gorm"
 )
@@ -30,7 +28,8 @@ func NewClickRepository(db *gorm.DB) *GormClickRepository {
 // Elle reçoit un pointeur vers une structure models.Click et la persiste en utilisant GORM.
 func (r *GormClickRepository) CreateClick(click *models.Click) error {
 	// TODO : Use GORM to create a new record in the 'clicks' table.
-
+	result := r.db.Create(click)
+	return result.Error
 }
 
 // CountClicksByLinkID compte le nombre total de clics pour un ID de lien donné.
@@ -39,6 +38,10 @@ func (r *GormClickRepository) CountClicksByLinkID(linkID uint) (int, error) {
 	var count int64 // GORM retourne un int64 pour les décomptes
 	// TODO : Utiliser GORM pour compter les enregistrements dans la table 'clicks'
 	// où 'LinkID' correspond à l'ID de lien fourni.
-	
+	result := r.db.Model(&models.Click{}).Where("link_id = ?", linkID).Count(&count)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
 	return int(count), nil // Convert the int64 count to an int
 }
